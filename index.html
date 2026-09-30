@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Radar métiers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* layout : une colonne, un écran par étape, barre de progression collante en haut */
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --ink:#15202e; --muted:#566273; --line:#d3d9e2;
+  --accent:#1f4fd8; --accent-ink:#ffffff; --mark:#ffd23f; --mark-ink:#15202e; --ok:#177a4b; --soft:#e3e9fb;
+  --f-display:"Bricolage Grotesque", "Arial Black", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10151d; --surface:#18202b; --ink:#e8edf4; --muted:#9aa6b6; --line:#2c3848;
+  --accent:#6f95ff; --accent-ink:#0c1220; --mark:#ffd23f; --mark-ink:#15202e; --ok:#4cc38a; --soft:#1e2a44; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151d; --surface:#18202b; --ink:#e8edf4; --muted:#9aa6b6; --line:#2c3848;
+  --accent:#6f95ff; --accent-ink:#0c1220; --mark:#ffd23f; --mark-ink:#15202e; --ok:#4cc38a; --soft:#1e2a44; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding-inline:16px;padding-block:0 64px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(2rem,6vw,3.2rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.5rem,4vw,2.1rem);font-weight:800}
+h3{font-size:1.15rem;font-weight:700}
+p{margin:0;max-width:65ch}
+.hl{background:var(--mark);color:var(--mark-ink);padding:0 .2em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.label{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+
+/* barre */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding-block:10px}
+.bar-in{max-width:860px;margin:0 auto;padding-inline:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.steps{display:flex;gap:6px;flex:1;min-width:0}
+.steps button{flex:1;height:10px;border:0;border-radius:5px;background:var(--line);cursor:pointer;padding:0}
+.steps button.done{background:var(--accent)}
+.steps button.now{background:var(--mark)}
+.steps button:disabled{cursor:not-allowed}
+.score{font-family:var(--f-mono);font-size:.85rem;white-space:nowrap}
+.score b{font-size:1.05rem}
+
+section.step{display:grid;gap:22px;padding-top:28px}
+.intro{display:grid;gap:12px}
+
+/* cartes cliquables */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.chip{display:flex;gap:10px;align-items:flex-start;text-align:left;font:inherit;color:var(--ink);background:var(--surface);border:2px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .15s,background .15s}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--soft)}
+.chip .tick{flex:none;width:22px;height:22px;border:2px solid var(--line);border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:.8rem;margin-top:1px}
+.chip[aria-pressed="true"] .tick{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.chip[aria-pressed="true"] .tick::after{content:"✓"}
+button:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+
+/* ceci ou cela */
+.duel{display:grid;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.duel .q{font-family:var(--f-mono);font-size:.78rem;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.duel .opts{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:stretch}
+.duel .vs{align-self:center;font-family:var(--f-display);font-weight:800;color:var(--muted)}
+.duel button{font:inherit;font-weight:700;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:10px;padding:12px;cursor:pointer}
+.duel button:hover{border-color:var(--accent)}
+.duel button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.duels{display:grid;gap:10px}
+
+/* preuves */
+.proofs{display:grid;gap:12px}
+.proof{display:grid;gap:6px;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--mark);border-radius:8px;padding:12px 14px}
+.proof label{font-weight:700}
+.proof .hint{font-size:.9rem;color:var(--muted)}
+input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:8px;padding:10px 12px}
+textarea{min-height:64px;resize:vertical}
+input[type=text]:focus,textarea:focus{border-color:var(--accent);outline:none}
+
+.pro{font-size:.92rem;color:var(--ok);font-weight:700}
+.reply{font-size:.95rem;background:var(--soft);border-radius:8px;padding:10px 12px}
+
+/* résultats */
+.podium{display:grid;gap:10px}
+.rank{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.rank .n{grid-row:span 2;font-family:var(--f-display);font-weight:800;font-size:2.2rem;color:var(--accent);line-height:1;font-variant-numeric:tabular-nums}
+.rank .t{font-weight:700;font-size:1.05rem}
+.rank .why{font-size:.9rem;color:var(--muted)}
+.meter{height:8px;background:var(--line);border-radius:4px;overflow:hidden;grid-column:2}
+.meter i{display:block;height:100%;background:var(--accent)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:.9rem;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+
+.mission{display:grid;gap:14px;background:var(--surface);border:2px solid var(--ink);border-radius:14px;padding:18px}
+.mission ol{margin:0;padding-left:1.3em;display:grid;gap:6px;max-width:65ch}
+.metiers{display:grid;gap:12px}
+.metier{display:grid;gap:8px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg)}
+.vote{display:flex;gap:6px;flex-wrap:wrap}
+.vote button{font:inherit;font-size:.92rem;color:var(--ink);background:var(--surface);border:2px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+.vote button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.nav{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px}
+.btn{font:inherit;font-weight:700;border-radius:10px;padding:12px 20px;cursor:pointer;border:2px solid var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.need{font-size:.9rem;color:var(--muted)}
+a{color:var(--accent);font-weight:700}
+pre.bilan{white-space:pre-wrap;font-family:var(--f-body);font-size:.95rem;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;margin:0;max-height:420px;overflow:auto}
+.hero-note{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.reset{font:inherit;font-size:.85rem;font-weight:700;color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:999px;padding:4px 12px;cursor:pointer}
+.reset:hover{color:var(--ink);border-color:var(--ink)}
+.confirm{display:grid;gap:12px;background:var(--surface);border:2px solid var(--mark);border-radius:12px;padding:16px;margin-top:20px}
+.btn.danger{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+@media (max-width:520px){.duel .opts{grid-template-columns:1fr}.duel .vs{justify-self:center}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="bar"><div class="bar-in">
+  <div class="steps" id="steps" aria-label="Étapes"></div>
+  <div class="score" aria-live="polite">indices trouvés : <b id="score">0</b></div>
+  <button type="button" class="reset" id="resetBtn">recommencer à zéro</button>
+</div></div>
+
+<main class="wrap" id="app"></main>
+
+<script>
+const FORM="https://docs.google.com/forms/d/e/1FAIpQLSdDPuI9n-nk93EVCQ4ygBN_VPHA9VEXdmzEjH0Ffzci7I5Wdg/viewform";
+const CI={
+ manuel:"J'aime le travail manuel", creer:"J'ai envie de créer, construire, rénover", crayon:"J'ai un bon coup de crayon",
+ communiquer:"J'aime communiquer, convaincre", nature:"J'aime être au contact de la nature", decouvertes:"J'aime faire des découvertes",
+ loi:"J'aime faire respecter la loi, les règles", mots:"J'aime jouer avec les mots", physique:"J'aime l'activité physique",
+ chiffres:"J'aime manier les chiffres", voyager:"J'aime me déplacer et voyager", animaux:"J'aime m'occuper des animaux",
+ organiser:"J'aime organiser, planifier", piloter:"J'aime piloter, conduire", environnement:"Je souhaite contribuer à la protection de l'environnement",
+ enfants:"Je souhaite m'occuper d'enfants", soin:"Je souhaite prendre soin des autres", secourir:"Je souhaite protéger et secourir",
+ transmettre:"Je souhaite transmettre", detail:"J'ai le souci du détail", chef:"J'ai l'âme d'un chef / d'une cheffe"
+};
+
+const DUELS=[
+ {q:"où ?",a:"dehors, même s'il fait froid",b:"à l'intérieur, au chaud",ai:["nature","physique"],bi:["detail"]},
+ {q:"ton corps",a:"bouger toute la journée",b:"rester à mon poste",ai:["physique","voyager"],bi:["detail","chiffres"]},
+ {q:"tu travailles avec…",a:"mes mains",b:"ma tête",ai:["manuel","creer"],bi:["decouvertes","chiffres"]},
+ {q:"en face de toi",a:"des gens",b:"des objets, des machines",ai:["communiquer","soin"],bi:["manuel","piloter"]},
+ {q:"avec qui ?",a:"en équipe",b:"seul, tranquille",ai:["chef","communiquer"],bi:["detail","crayon"]},
+ {q:"le rythme",a:"de l'action, de l'imprévu",b:"du calme, je sais ce qui m'attend",ai:["secourir","piloter"],bi:["organiser","detail"]},
+ {q:"la saleté",a:"me salir, aucun souci",b:"rester propre",ai:["manuel","nature","animaux"],bi:["communiquer","chiffres"]},
+ {q:"les ordres",a:"qu'on me dise quoi faire",b:"décider moi-même",ai:["loi","manuel"],bi:["chef","organiser"]},
+ {q:"le genre de boulot",a:"un truc précis, minutieux",b:"du costaud, du physique",ai:["detail","crayon"],bi:["physique","creer"]},
+ {q:"le lieu",a:"toujours le même endroit",b:"changer souvent de lieu",ai:["organiser"],bi:["voyager","piloter"]}
+];
+
+const SITU=[
+ {t:"je démonte ou je répare des trucs (vélo, scooter, console, meuble)",i:["manuel","creer"]},
+ {t:"je cuisine, pour moi ou pour les autres",i:["manuel","soin"]},
+ {t:"je garde mes frères, sœurs, cousins",i:["enfants","transmettre"]},
+ {t:"je m'occupe d'un animal",i:["animaux"]},
+ {t:"je fais du sport, je ne tiens pas en place",i:["physique"]},
+ {t:"je dessine, je customise des fringues ou des objets",i:["crayon","creer"]},
+ {t:"je fais des vidéos, des montages, des photos",i:["crayon","communiquer"]},
+ {t:"je revends des trucs, je négocie les prix",i:["communiquer","chiffres"]},
+ {t:"c'est moi qui organise les sorties du groupe",i:["organiser","chef"]},
+ {t:"en jeu en ligne, c'est moi qui donne les consignes",i:["chef","organiser"]},
+ {t:"j'aide un proche (grand-parent, voisin, parent)",i:["soin"]},
+ {t:"dès que je peux, je suis dehors (campagne, pêche, balade)",i:["nature","environnement"]},
+ {t:"j'aime rouler : scooter, quad, jeux de conduite",i:["piloter"]},
+ {t:"je bidouille mon téléphone ou l'ordi",i:["decouvertes","detail"]},
+ {t:"je range, je trie, chaque chose à sa place",i:["detail","organiser"]},
+ {t:"je ne supporte pas l'injustice, je défends les autres",i:["loi","secourir"]},
+ {t:"on vient me demander comment faire, et j'explique",i:["transmettre"]},
+ {t:"j'écris : messages longs, textes, sons",i:["mots"]},
+ {t:"j'aime partir, changer de ville, découvrir",i:["voyager","decouvertes"]},
+ {t:"je fais du bricolage ou du jardinage avec un proche",i:["manuel","nature"]}
+];
+
+const ATOUTS=[
+ {t:"débrouillard",p:"autonomie, je trouve des solutions"},
+ {t:"patient",p:"calme avec les clients, travail minutieux"},
+ {t:"drôle",p:"bon contact, je mets une bonne ambiance dans l'équipe"},
+ {t:"endurant, costaud",p:"résistance physique"},
+ {t:"calme quand ça chauffe",p:"sang-froid, je gère les urgences"},
+ {t:"fiable",p:"sérieux, on peut compter sur moi"},
+ {t:"observateur",p:"sens du détail, je repère les problèmes"},
+ {t:"rapide",p:"efficace, je tiens un rythme soutenu"},
+ {t:"têtu quand ça me plaît",p:"persévérance"},
+ {t:"habile de mes mains",p:"dextérité, précision des gestes"},
+ {t:"sociable",p:"sens du relationnel"},
+ {t:"franc",p:"honnêteté, je dis les choses clairement"},
+ {t:"créatif",p:"imagination, je propose des idées"},
+ {t:"serviable",p:"sens du service"}
+];
+
+const FREINS=[
+ {t:"je n'ai pas de moyen de transport",r:"Ça réduit la zone, ça ne bloque pas le métier. Sur une fiche MétierScope, regarde les offres près de chez toi : certains métiers recrutent partout, même dans les petites villes."},
+ {t:"je déteste être en classe",r:"Beaucoup de CAP se préparent en apprentissage : une bonne partie du temps en entreprise, payé. Ce n'est pas la même vie que le collège."},
+ {t:"je ne tiens pas assis longtemps",r:"C'est un critère de choix, pas un défaut. Élimine les métiers de bureau et cherche ceux où l'on est debout ou en mouvement."},
+ {t:"j'ai du mal à parler à des inconnus",r:"Il existe plein de métiers avec peu de clients. Et le contact, ça s'apprend : le stage est un bon endroit pour tester sans risque."},
+ {t:"j'ai du mal à me lever le matin",r:"Vérifie les horaires dans la fiche métier (rubrique conditions de travail). Boulangerie ou chantier commencent tôt, d'autres métiers finissent tard."},
+ {t:"mes notes sont mauvaises",r:"Pour un CAP, la motivation et le stage comptent beaucoup. Un patron regarde surtout si tu viens, si tu es à l'heure et si tu écoutes."},
+ {t:"je ne sais pas ce que j'aime",r:"Normal, et tu viens de répondre à des dizaines de questions sur toi. Les indices sont là : ton profil s'affiche à l'étape suivante."},
+ {t:"j'ai un souci de santé (dos, allergie, asthme…)",r:"Regarde dans la fiche métier si on porte des charges, s'il y a de la poussière ou des produits. Parles-en aussi à l'infirmière scolaire."},
+ {t:"ma famille veut un métier précis pour moi",r:"Sers-toi des fiches MétierScope comme arguments : ce que tu as trouvé sur toi aujourd'hui, c'est concret à montrer."},
+ {t:"personne autour de moi pour m'aider à trouver un stage",r:"Ton prof est là pour ça. Avec un métier précis en tête, c'est beaucoup plus facile de trouver des entreprises à appeler."},
+ {t:"je lâche vite quand c'est dur",r:"Regarde tes réponses de l'étape 2 : sur un truc qui te plaît, tu ne lâches pas. Le bon métier, c'est justement ça."}
+];
+
+const STEPS=["Ceci ou cela","Ta vraie vie","Tes atouts","Tes freins","Ton radar","Ton bilan"];
+
+const BLANK=()=>({step:0,prenom:"",duels:{},situ:{},proof:{},atouts:{},atoutProof:{},freins:{},freinAutre:"",aucunFrein:false,metiers:[{n:"",v:"",ok:"",ko:""},{n:"",v:"",ok:"",ko:""},{n:"",v:"",ok:"",ko:""}],stage:"",maxStep:0});
+let S=BLANK();
+let gate=false, askReset=false;
+try{const s=JSON.parse(localStorage.getItem("radar-metiers")||"null");if(s&&typeof s==="object"){S=Object.assign(BLANK(),s);gate=!!((S.prenom||"").trim()||Object.keys(S.duels||{}).length)}}catch(e){}
+function resetAll(){S=BLANK();gate=false;askReset=false;try{localStorage.removeItem("radar-metiers")}catch(e){}render();scrollTo(0,0)}
+function save(){try{localStorage.setItem("radar-metiers",JSON.stringify(S))}catch(e){}}
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const filled=s=>(s||"").trim().length>=3;
+
+function scores(){
+  const sc={};Object.keys(CI).forEach(k=>sc[k]=0);
+  DUELS.forEach((d,i)=>{const v=S.duels[i];if(v==="a")d.ai.forEach(k=>sc[k]+=1);if(v==="b")d.bi.forEach(k=>sc[k]+=1)});
+  SITU.forEach((s,i)=>{if(S.situ[i]){s.i.forEach(k=>sc[k]+=filled(S.proof[i])?3:2)}});
+  return Object.entries(sc).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]);
+}
+function indices(){
+  let n=Object.keys(S.duels).length;
+  SITU.forEach((s,i)=>{if(S.situ[i]){n++;if(filled(S.proof[i]))n+=2}});
+  ATOUTS.forEach((a,i)=>{if(S.atouts[i]){n++;if(filled(S.atoutProof[i]))n+=2}});
+  n+=Object.values(S.freins).filter(Boolean).length+(filled(S.freinAutre)?1:0);
+  S.metiers.forEach(m=>{if(filled(m.n))n++;if(m.v)n++;if(filled(m.ok)||filled(m.ko))n++});
+  return n;
+}
+
+function canGo(step){
+  if(step===0)return Object.keys(S.duels).length===DUELS.length&&filled(S.prenom)?true:"Réponds aux 10 duels et écris ton prénom.";
+  if(step===1){const sel=SITU.filter((s,i)=>S.situ[i]).length;const pr=SITU.filter((s,i)=>S.situ[i]&&filled(S.proof[i])).length;
+    return sel>=3&&pr>=2?true:`Coche au moins 3 situations et raconte au moins 2 souvenirs (${sel}/3 cochées, ${pr}/2 racontés).`}
+  if(step===2){const sel=ATOUTS.filter((a,i)=>S.atouts[i]).length;const pr=ATOUTS.filter((a,i)=>S.atouts[i]&&filled(S.atoutProof[i])).length;
+    return sel===3&&pr===3?true:`Choisis 3 atouts et donne une preuve pour chacun (${sel}/3, preuves ${pr}/3).`}
+  if(step===3){const n=Object.values(S.freins).filter(Boolean).length+(filled(S.freinAutre)?1:0);
+    return n>0||S.aucunFrein?true:"Coche au moins un frein, ou indique que tu n'en vois pas."}
+  if(step===4){const m=S.metiers.filter(m=>filled(m.n)&&m.v).length;return m>=2?true:`Note au moins 2 métiers trouvés sur MétierScope (${m}/2).`}
+  return true;
+}
+
+function renderBar(){
+  const b=document.getElementById("steps");b.innerHTML="";
+  STEPS.forEach((t,i)=>{const x=document.createElement("button");x.type="button";x.title=t;x.setAttribute("aria-label",`Étape ${i+1} : ${t}`);
+    x.className=i===S.step?"now":i<S.step||i<=S.maxStep?"done":"";x.disabled=i>S.maxStep;x.onclick=()=>{S.step=i;save();render();scrollTo(0,0)};b.appendChild(x)});
+  document.getElementById("score").textContent=indices();
+}
+
+function nav(){
+  const ok=canGo(S.step);
+  return `<div class="nav">
+    ${S.step>0?`<button class="btn ghost" id="prev" type="button">← retour</button>`:"<span></span>"}
+    ${S.step<STEPS.length-1?`<div style="display:grid;gap:6px;justify-items:end">
+      <button class="btn primary" id="next" type="button" ${ok===true?"":"disabled"}>étape suivante →</button>
+      <span class="need" id="need">${ok===true?"":esc(ok)}</span></div>`:""}
+  </div>`;
+}
+function refreshNav(){
+  const ok=canGo(S.step);const n=document.getElementById("next"),m=document.getElementById("need");
+  if(n){n.disabled=ok!==true;m.textContent=ok===true?"":ok}
+  renderBar();
+}
+
+function header(k,h,p){return `<div class="intro"><span class="label">étape ${k} sur ${STEPS.length}</span><h2>${h}</h2>${p?`<p>${p}</p>`:""}</div>`}
+
+function render(){
+  const A=document.getElementById("app");let h="";
+  if(gate){
+    A.innerHTML=`<section class="step"><div class="intro"><span class="label">test en cours sur cet ordinateur</span>
+      <h2>Un test a déjà été commencé${(S.prenom||"").trim()?` par <span class="hl">${esc(S.prenom.trim())}</span>`:""}.</h2>
+      <p>Si ce n'est pas toi, commence un nouveau test : les réponses précédentes seront effacées.</p></div>
+      <div class="hero-note"><button class="btn primary" type="button" id="gNew">je commence un nouveau test</button>
+      <button class="btn ghost" type="button" id="gGo">c'est moi, je continue</button></div></section>`;
+    document.getElementById("gNew").onclick=resetAll;
+    document.getElementById("gGo").onclick=()=>{gate=false;render()};
+    renderBar();return;
+  }
+  if(askReset){
+    h+=`<div class="confirm" role="alertdialog" aria-labelledby="cT"><h3 id="cT">Tout effacer et recommencer ?</h3>
+      <p>Toutes les réponses enregistrées sur cet ordinateur seront supprimées. Pense à envoyer ton bilan avant.</p>
+      <div class="hero-note"><button class="btn danger" type="button" id="cYes">oui, tout effacer</button>
+      <button class="btn ghost" type="button" id="cNo">annuler</button></div></div>`;
+  }
+  if(S.step===0){
+    h+=`<section class="step">
+      <div class="intro" style="padding-top:8px">
+        <span class="label">découverte professionnelle · 3e prépa métiers</span>
+        <h1>Pas d'idée de métier ? <span class="hl">Normal.</span></h1>
+        <p>Personne ne te demande de choisir ta vie aujourd'hui. On cherche juste des indices dans ce que tu fais déjà, en dehors de l'école. À la fin, tu iras vérifier sur MétierScope si des métiers collent à ton profil.</p>
+      </div>
+      <div class="proof"><label for="prenom">Ton prénom</label><input type="text" id="prenom" value="${esc(S.prenom)}" autocomplete="off"></div>
+      ${header(1,"Ceci ou cela","Réponds vite, sans réfléchir. Il n'y a pas de bonne réponse.")}
+      <div class="duels">${DUELS.map((d,i)=>`<div class="duel"><span class="q">${i+1}/10 · ${d.q}</span><div class="opts">
+        <button type="button" data-duel="${i}" data-v="a" aria-pressed="${S.duels[i]==="a"}">${d.a}</button><span class="vs">ou</span>
+        <button type="button" data-duel="${i}" data-v="b" aria-pressed="${S.duels[i]==="b"}">${d.b}</button></div></div>`).join("")}</div>
+      ${nav()}</section>`;
+  }
+  if(S.step===1){
+    h+=`<section class="step">${header(2,"Ta vraie vie","Coche ce que tu fais vraiment, pour de vrai, pas ce qui serait bien. Puis raconte une fois précise où tu l'as fait : c'est ça qui compte.")}
+      <div class="grid">${SITU.map((s,i)=>`<button type="button" class="chip" data-situ="${i}" aria-pressed="${!!S.situ[i]}"><span class="tick"></span><span>${s.t}</span></button>`).join("")}</div>
+      <div class="proofs" id="proofs"></div>${nav()}</section>`;
+  }
+  if(S.step===2){
+    h+=`<section class="step">${header(3,"Tes atouts","Pas ceux de ton bulletin. Choisis les 3 qualités que tes proches ou tes potes te donneraient. Pour chacune, une preuve : qui le dirait, et à quelle occasion ?")}
+      <div class="grid">${ATOUTS.map((a,i)=>`<button type="button" class="chip" data-atout="${i}" aria-pressed="${!!S.atouts[i]}"><span class="tick"></span><span>${a.t}</span></button>`).join("")}</div>
+      <div class="proofs" id="aproofs"></div>${nav()}</section>`;
+  }
+  if(S.step===3){
+    h+=`<section class="step">${header(4,"Tes freins","Ce qui pourrait te bloquer. Sois franc, personne ne te juge ici. Pour chaque frein coché, tu as une piste.")}
+      <div class="grid">${FREINS.map((f,i)=>`<button type="button" class="chip" data-frein="${i}" aria-pressed="${!!S.freins[i]}"><span class="tick"></span><span>${f.t}</span></button>`).join("")}
+        <button type="button" class="chip" id="aucun" aria-pressed="${!!S.aucunFrein}"><span class="tick"></span><span>je ne vois aucun frein</span></button></div>
+      <div class="proofs" id="freplies"></div>
+      <div class="proof"><label for="fautre">Un autre frein ? (facultatif)</label><input type="text" id="fautre" value="${esc(S.freinAutre)}"></div>
+      ${nav()}</section>`;
+  }
+  if(S.step===4){
+    const sc=scores();const top=sc.slice(0,3);const max=top.length?top[0][1]:1;
+    const crit=DUELS.map((d,i)=>S.duels[i]==="a"?d.a:S.duels[i]==="b"?d.b:null).filter(Boolean);
+    h+=`<section class="step">${header(5,"Ton radar","Voilà ce que tes réponses disent de toi. Ce n'est pas un verdict : c'est une piste à vérifier.")}
+      <div class="podium">${top.map((e,k)=>`<div class="rank"><span class="n">${k+1}</span><span class="t">${esc(CI[e[0]])}</span>
+        <span class="meter" aria-hidden="true"><i style="width:${Math.round(e[1]/max*100)}%"></i></span></div>`).join("")||"<p>Pas assez de réponses pour l'instant.</p>"}</div>
+      <div class="intro"><h3>Tes critères pour un métier</h3><div class="tags">${crit.map(c=>`<span class="tag">${esc(c)}</span>`).join("")}</div></div>
+      <div class="mission">
+        <span class="label">mission sur MétierScope</span>
+        <h3>Va vérifier si ton radar a raison</h3>
+        <ol>
+          <li>Ouvre <a href="https://candidat.francetravail.fr/metierscope/centres-interet" target="_blank" rel="noopener">MétierScope, rubrique centres d'intérêt</a>.</li>
+          <li>Clique sur ton centre d'intérêt n°1${top[0]?` : <b>${esc(CI[top[0][0]])}</b>`:""}.</li>
+          <li>Dans la liste, choisis un métier dont le nom t'intrigue, même si tu ne sais pas ce que c'est.</li>
+          <li>Ouvre sa fiche : regarde la vidéo et les conditions de travail. Compare avec tes critères au-dessus.</li>
+          <li>Recommence avec ton n°2, puis ton n°3.</li>
+        </ol>
+        <div class="metiers">${S.metiers.map((m,i)=>`<div class="metier">
+          <label class="label" for="mn${i}">métier ${i+1}</label>
+          <input type="text" id="mn${i}" data-m="${i}" data-f="n" value="${esc(m.n)}" placeholder="nom du métier">
+          <div class="vote" role="group" aria-label="Ton avis">${["ça me parle","pourquoi pas","non merci"].map(v=>`<button type="button" data-mv="${i}" data-v="${v}" aria-pressed="${m.v===v}">${v}</button>`).join("")}</div>
+          <input type="text" id="mok${i}" data-m="${i}" data-f="ok" value="${esc(m.ok)}" placeholder="ce qui colle avec moi">
+          <input type="text" id="mko${i}" data-m="${i}" data-f="ko" value="${esc(m.ko)}" placeholder="ce qui me bloque ou me gêne">
+        </div>`).join("")}</div>
+      </div>${nav()}</section>`;
+  }
+  if(S.step===5){
+    h+=`<section class="step">${header(6,"Ton bilan","Dernière question, la plus importante. Ensuite, envoie ton bilan à ton prof.")}
+      <div class="proof"><label for="stage">Si tu pouvais voir un de ces métiers en vrai pendant une journée ou un stage, ce serait lequel, et pourquoi ?</label>
+        <textarea id="stage">${esc(S.stage)}</textarea></div>
+      <pre class="bilan" id="bilan"></pre>
+      <div class="mission">
+        <span class="label">envoi au prof</span>
+        <ol>
+          <li>Clique sur le bouton : le formulaire s'ouvre dans un nouvel onglet, déjà rempli avec ton prénom et ton bilan.</li>
+          <li>Vérifie que les deux cases sont remplies, puis clique sur « Envoyer ».</li>
+          <li>Si la case « Bilan » est vide, clique dedans et colle ton texte avec <b>Ctrl + V</b> : il est aussi copié.</li>
+        </ol>
+        <div class="hero-note"><a class="btn primary" id="copy" href="${FORM}" target="_blank" rel="noopener" style="text-decoration:none">envoyer mon bilan à mon prof</a><span class="need" id="copied" aria-live="polite"></span></div>
+      </div>
+      <div class="confirm" style="border-color:var(--line)"><h3>Tu as envoyé ton bilan ?</h3>
+        <p>Efface tes réponses pour que l'élève suivant commence un test vide.</p>
+        <div class="hero-note"><button class="btn danger" type="button" id="endReset">j'ai envoyé, j'efface tout</button></div></div>
+      ${nav()}</section>`;
+  }
+  A.innerHTML=h;bind();renderBar();
+  if(S.step===1)drawProofs();if(S.step===2)drawAProofs();if(S.step===3)drawReplies();if(S.step===5)drawBilan();
+}
+
+function drawProofs(){
+  const el=document.getElementById("proofs");
+  el.innerHTML=SITU.map((s,i)=>S.situ[i]?`<div class="proof"><label for="p${i}">${esc(s.t)}</label>
+    <span class="hint">La dernière fois, c'était quand ? Avec qui ? Qu'est-ce que tu as fait exactement ?</span>
+    <input type="text" id="p${i}" data-proof="${i}" value="${esc(S.proof[i]||"")}"></div>`:"").join("");
+}
+function drawAProofs(){
+  const el=document.getElementById("aproofs");
+  el.innerHTML=ATOUTS.map((a,i)=>S.atouts[i]?`<div class="proof"><label for="a${i}">${esc(a.t)}</label>
+    <span class="pro">sur un CV ou en stage, ça se dit : ${esc(a.p)}</span>
+    <input type="text" id="a${i}" data-ap="${i}" value="${esc(S.atoutProof[i]||"")}" placeholder="qui le dirait, et à quelle occasion ?"></div>`:"").join("");
+}
+function drawReplies(){
+  document.getElementById("freplies").innerHTML=FREINS.map((f,i)=>S.freins[i]?`<div class="reply"><b>${esc(f.t)}.</b> ${esc(f.r)}</div>`:"").join("");
+}
+function bilanText(){
+  const top=scores().slice(0,3).map((e,k)=>`${k+1}. ${CI[e[0]]}`);
+  const crit=DUELS.map((d,i)=>S.duels[i]==="a"?d.a:S.duels[i]==="b"?d.b:null).filter(Boolean);
+  const vie=SITU.map((s,i)=>S.situ[i]?`- ${s.t}${filled(S.proof[i])?` (${S.proof[i].trim()})`:""}`:null).filter(Boolean);
+  const at=ATOUTS.map((a,i)=>S.atouts[i]?`- ${a.t} = ${a.p}${filled(S.atoutProof[i])?` (${S.atoutProof[i].trim()})`:""}`:null).filter(Boolean);
+  const fr=FREINS.map((f,i)=>S.freins[i]?`- ${f.t}`:null).filter(Boolean);if(filled(S.freinAutre))fr.push("- "+S.freinAutre.trim());
+  const me=S.metiers.filter(m=>filled(m.n)).map(m=>`- ${m.n.trim()} : ${m.v||"pas d'avis"}${filled(m.ok)?` | ça colle : ${m.ok.trim()}`:""}${filled(m.ko)?` | ça bloque : ${m.ko.trim()}`:""}`);
+  return `Radar métiers de ${S.prenom.trim()||"…"}
+
+Mes centres d'intérêt MétierScope
+${top.join("\n")||"-"}
+
+Mes critères
+${crit.map(c=>"- "+c).join("\n")}
+
+Ce que je fais dans ma vie
+${vie.join("\n")||"-"}
+
+Mes atouts
+${at.join("\n")||"-"}
+
+Mes freins
+${fr.join("\n")||"- aucun"}
+
+Métiers explorés sur MétierScope
+${me.join("\n")||"-"}
+
+Le métier que je voudrais voir en vrai
+${S.stage.trim()||"-"}`;
+}
+function formUrl(){return FORM+"?usp=pp_url&entry.1390505590="+encodeURIComponent((S.prenom||"").trim())+"&entry.1835426333="+encodeURIComponent(bilanText())}
+function drawBilan(){document.getElementById("bilan").textContent=bilanText();const l=document.getElementById("copy");if(l)l.href=formUrl()}
+
+function bind(){
+  const cy=document.getElementById("cYes");if(cy)cy.onclick=resetAll;
+  const cn=document.getElementById("cNo");if(cn)cn.onclick=()=>{askReset=false;render()};
+  const er=document.getElementById("endReset");if(er)er.onclick=()=>{askReset=true;render();scrollTo(0,0)};
+  const on=(sel,ev,fn)=>document.querySelectorAll(sel).forEach(e=>e.addEventListener(ev,fn));
+  on("#prenom","input",e=>{S.prenom=e.target.value;save();refreshNav()});
+  on("[data-duel]","click",e=>{const b=e.currentTarget;S.duels[b.dataset.duel]=b.dataset.v;
+    b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));save();refreshNav()});
+  on("[data-situ]","click",e=>{const b=e.currentTarget,i=b.dataset.situ;S.situ[i]=!S.situ[i];b.setAttribute("aria-pressed",!!S.situ[i]);save();drawProofs();refreshNav()});
+  on("[data-atout]","click",e=>{const b=e.currentTarget,i=b.dataset.atout;const n=ATOUTS.filter((a,k)=>S.atouts[k]).length;
+    if(!S.atouts[i]&&n>=3){document.getElementById("need").textContent="3 atouts maximum : décoche-en un d'abord.";return}
+    S.atouts[i]=!S.atouts[i];b.setAttribute("aria-pressed",!!S.atouts[i]);save();drawAProofs();refreshNav()});
+  on("[data-frein]","click",e=>{const b=e.currentTarget,i=b.dataset.frein;S.freins[i]=!S.freins[i];b.setAttribute("aria-pressed",!!S.freins[i]);
+    if(S.freins[i]){S.aucunFrein=false;const a=document.getElementById("aucun");a&&a.setAttribute("aria-pressed","false")}save();drawReplies();refreshNav()});
+  on("#aucun","click",e=>{S.aucunFrein=!S.aucunFrein;e.currentTarget.setAttribute("aria-pressed",S.aucunFrein);save();refreshNav()});
+  on("#fautre","input",e=>{S.freinAutre=e.target.value;save();refreshNav()});
+  on("[data-mv]","click",e=>{const b=e.currentTarget;S.metiers[b.dataset.mv].v=b.dataset.v;
+    b.parentNode.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));save();refreshNav()});
+  on("[data-m]","input",e=>{const t=e.target;S.metiers[t.dataset.m][t.dataset.f]=t.value;save();refreshNav()});
+  on("#stage","input",e=>{S.stage=e.target.value;save();drawBilan();refreshNav()});
+  on("#copy","click",e=>{e.currentTarget.href=formUrl();const txt=bilanText(),msg=document.getElementById("copied");
+    const fallback=()=>{const r=document.createRange();r.selectNodeContents(document.getElementById("bilan"));const s=getSelection();s.removeAllRanges();s.addRange(r);msg.textContent="Formulaire ouvert dans un nouvel onglet. Si la case « Bilan » est vide : ton bilan est sélectionné ici, fais Ctrl + C puis colle-le."};
+    try{navigator.clipboard.writeText(txt).then(()=>msg.textContent="Formulaire ouvert dans un nouvel onglet. Vérifie et clique sur « Envoyer ».",fallback)}catch(err){fallback()}});
+  const n=document.getElementById("next");if(n)n.onclick=()=>{if(canGo(S.step)!==true)return;S.step++;S.maxStep=Math.max(S.maxStep,S.step);save();render();scrollTo(0,0)};
+  const p=document.getElementById("prev");if(p)p.onclick=()=>{S.step--;save();render();scrollTo(0,0)};
+}
+document.getElementById("resetBtn").onclick=()=>{if(gate)return;askReset=true;render();scrollTo(0,0)};
+document.getElementById("app").addEventListener("input",e=>{if(e.target.dataset.proof!==undefined){S.proof[e.target.dataset.proof]=e.target.value;save();refreshNav()}
+  if(e.target.dataset.ap!==undefined){S.atoutProof[e.target.dataset.ap]=e.target.value;save();refreshNav()}});
+render();
+</script>
+
+</body>
+</html>
